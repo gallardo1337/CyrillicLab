@@ -17,50 +17,8 @@ import {
   normalize,
 } from "../../lib/gameUtils";
 
-const STORAGE_KEY = "cyrillic-lab-stats";
-
-function saveLocalStats({ score, totalQuestions, mode, alphabetType }) {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const existing = raw
-      ? JSON.parse(raw)
-      : {
-          totalGames: 0,
-          totalCorrect: 0,
-          totalQuestions: 0,
-          bestScore: 0,
-          lastScore: 0,
-          casualGames: 0,
-          hardcoreGames: 0,
-          ukrainianGames: 0,
-          russianGames: 0,
-        };
-
-    const nextStats = {
-      ...existing,
-      totalGames: (existing.totalGames || 0) + 1,
-      totalCorrect: (existing.totalCorrect || 0) + score,
-      totalQuestions: (existing.totalQuestions || 0) + totalQuestions,
-      bestScore: Math.max(existing.bestScore || 0, score),
-      lastScore: score,
-      casualGames:
-        (existing.casualGames || 0) + (mode === "casual" ? 1 : 0),
-      hardcoreGames:
-        (existing.hardcoreGames || 0) + (mode === "hardcore" ? 1 : 0),
-      ukrainianGames:
-        (existing.ukrainianGames || 0) +
-        (alphabetType === "ukrainian" ? 1 : 0),
-      russianGames:
-        (existing.russianGames || 0) + (alphabetType === "russian" ? 1 : 0),
-    };
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextStats));
-  } catch {
-    // absichtlich still
-  }
-}
-
 async function saveGameResultToSupabase({
+  userId,
   score,
   totalQuestions,
   mode,
@@ -70,6 +28,7 @@ async function saveGameResultToSupabase({
     totalQuestions > 0 ? Number(((score / totalQuestions) * 100).toFixed(2)) : 0;
 
   const { error } = await supabase.from("game_results").insert({
+    user_id: userId,
     alphabet: alphabetType,
     mode,
     score,
@@ -78,7 +37,7 @@ async function saveGameResultToSupabase({
   });
 
   if (error) {
-    console.error("Supabase insert error:", error.message);
+    throw new Error(error.message);
   }
 }
 
@@ -101,7 +60,29 @@ function GameContent() {
   const [showResult, setShowResult] = useState(false);
   const [options, setOptions] = useState([]);
   const [saveStatus, setSaveStatus] = useState("idle");
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [session, setSession] = useState(null);
   const hasSavedRef = useRef(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+
+      const currentSession = data.session || null;
+      setSession(currentSession);
+      setSessionChecked(true);
+
+      if (!currentSession) {
+        router.push("/login");
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [router]);
 
   useEffect(() => {
     const picked = pickQuestions(alphabet, TOTAL_QUESTIONS);
@@ -130,20 +111,13 @@ function GameContent() {
   }, [mode, questions, currentIndex, alphabet]);
 
   useEffect(() => {
-    if (!showResult || hasSavedRef.current) return;
+    if (!showResult || hasSavedRef.current || !session?.user?.id) return;
 
     hasSavedRef.current = true;
-
-    saveLocalStats({
-      score,
-      totalQuestions: TOTAL_QUESTIONS,
-      mode,
-      alphabetType,
-    });
-
     setSaveStatus("saving");
 
     saveGameResultToSupabase({
+      userId: session.user.id,
       score,
       totalQuestions: TOTAL_QUESTIONS,
       mode,
@@ -151,7 +125,17 @@ function GameContent() {
     })
       .then(() => setSaveStatus("saved"))
       .catch(() => setSaveStatus("error"));
-  }, [showResult, score, mode, alphabetType]);
+  }, [showResult, score, mode, alphabetType, session]);
+
+  if (!sessionChecked || !session) {
+    return (
+      <main className="container">
+        <div className="card">
+          <h1>Lade Spiel...</h1>
+        </div>
+      </main>
+    );
+  }
 
   if (questions.length === 0) {
     return (
@@ -246,7 +230,7 @@ function GameContent() {
             </button>
 
             <Link href="/stats" className="linkButton">
-              Statistik ansehen
+              Meine Statistik
             </Link>
           </div>
         </div>
@@ -319,7 +303,7 @@ function GameContent() {
             Menü
           </Link>
           <Link href="/stats" className="textLink">
-            Statistik
+            Meine Statistik
           </Link>
         </div>
       </div>
