@@ -7,6 +7,7 @@ import { ukrainianAlphabet, russianAlphabet } from "../../lib/alphabetData";
 import ProgressBar from "../../components/ProgressBar";
 import AnswerButton from "../../components/AnswerButton";
 import { supabase } from "../../lib/supabase";
+import { playCorrectSound, playWrongSound } from "../../lib/sound";
 import {
   TOTAL_QUESTIONS,
   pickQuestions,
@@ -167,6 +168,9 @@ function GameContent() {
 
     if (correct) {
       setScore((prev) => prev + 1);
+      playCorrectSound();
+    } else {
+      playWrongSound();
     }
 
     setSelected(answer);
@@ -186,6 +190,9 @@ function GameContent() {
 
     if (correct) {
       setScore((prev) => prev + 1);
+      playCorrectSound();
+    } else {
+      playWrongSound();
     }
 
     setSelected(input);
@@ -254,8 +261,8 @@ function GameContent() {
         {mode === "casual" && (
           <div className="options">
             {options.map((opt, i) => {
-              const correct = current.answers[0];
-              const isCorrect = normalize(opt) === normalize(correct);
+              const correctAnswer = current.answers[0];
+              const isCorrect = normalize(opt) === normalize(correctAnswer);
               const isSelected = selected === opt;
 
               let className = "";
