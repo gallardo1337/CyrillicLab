@@ -109,8 +109,8 @@ export default function Home() {
           <div className="authBox">
             <p className="authInfo">
               Du kannst auch ohne Login spielen. Mit Konto werden deine
-              Ergebnisse, persönliche Statistiken und später auch dein Platz in
-              der Bestenliste gespeichert.
+              Ergebnisse, persönliche Statistiken und dein Platz in der
+              Bestenliste gespeichert.
             </p>
 
             <div className="authActions">
@@ -181,6 +181,9 @@ export default function Home() {
         <div className="bottomLinks homeLinks">
           <Link href="/stats" className="textLink">
             Meine Statistik
+          </Link>
+          <Link href="/leaderboard" className="textLink">
+            Bestenliste
           </Link>
         </div>
       </div>
