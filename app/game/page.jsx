@@ -54,6 +54,9 @@ function GameContent() {
   }, [alphabetType]);
 
   const [questions, setQuestions] = useState([]);
+  const [reviewQuestions, setReviewQuestions] = useState([]);
+  const [isReviewRound, setIsReviewRound] = useState(false);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -64,7 +67,11 @@ function GameContent() {
   const [sessionChecked, setSessionChecked] = useState(false);
   const [session, setSession] = useState(null);
   const [hardcoreFeedback, setHardcoreFeedback] = useState(null);
+  const [mistakes, setMistakes] = useState([]);
   const hasSavedRef = useRef(false);
+
+  const activeQuestions = isReviewRound ? reviewQuestions : questions;
+  const current = activeQuestions[currentIndex];
 
   useEffect(() => {
     let mounted = true;
@@ -92,6 +99,8 @@ function GameContent() {
     const picked = pickQuestions(alphabet, TOTAL_QUESTIONS);
 
     setQuestions(picked);
+    setReviewQuestions([]);
+    setIsReviewRound(false);
     setCurrentIndex(0);
     setScore(0);
     setSelected(null);
@@ -100,21 +109,22 @@ function GameContent() {
     setOptions([]);
     setSaveStatus("idle");
     setHardcoreFeedback(null);
+    setMistakes([]);
     hasSavedRef.current = false;
   }, [alphabet, mode]);
 
   useEffect(() => {
     if (
       mode !== "casual" ||
-      questions.length === 0 ||
-      currentIndex >= questions.length
+      activeQuestions.length === 0 ||
+      currentIndex >= activeQuestions.length
     ) {
       setOptions([]);
       return;
     }
 
-    setOptions(generateOptions(questions[currentIndex], alphabet, 3));
-  }, [mode, questions, currentIndex, alphabet]);
+    setOptions(generateOptions(activeQuestions[currentIndex], alphabet, 3));
+  }, [mode, activeQuestions, currentIndex, alphabet]);
 
   useEffect(() => {
     if (!showResult || hasSavedRef.current) return;
@@ -131,13 +141,13 @@ function GameContent() {
     saveGameResultToSupabase({
       userId: session.user.id,
       score,
-      totalQuestions: TOTAL_QUESTIONS,
+      totalQuestions: questions.length,
       mode,
       alphabetType,
     })
       .then(() => setSaveStatus("saved"))
       .catch(() => setSaveStatus("error"));
-  }, [showResult, score, mode, alphabetType, session]);
+  }, [showResult, score, mode, alphabetType, session, questions.length]);
 
   if (!sessionChecked) {
     return (
@@ -149,7 +159,7 @@ function GameContent() {
     );
   }
 
-  if (questions.length === 0) {
+  if (activeQuestions.length === 0 || !current) {
     return (
       <main className="container">
         <div className="card">
@@ -159,18 +169,39 @@ function GameContent() {
     );
   }
 
-  const current = questions[currentIndex];
+  const totalForProgress = activeQuestions.length;
+
+  const addMistake = (question) => {
+    setMistakes((prev) => {
+      const exists = prev.some((item) => item.char === question.char);
+      if (exists) return prev;
+      return [...prev, question];
+    });
+  };
 
   const nextQuestion = () => {
     setSelected(null);
     setInput("");
     setHardcoreFeedback(null);
 
-    if (currentIndex + 1 >= TOTAL_QUESTIONS) {
-      setShowResult(true);
-    } else {
+    const isLastQuestion = currentIndex + 1 >= activeQuestions.length;
+
+    if (!isLastQuestion) {
       setCurrentIndex((prev) => prev + 1);
+      return;
     }
+
+    if (!isReviewRound && mistakes.length > 0) {
+      setReviewQuestions(mistakes);
+      setIsReviewRound(true);
+      setCurrentIndex(0);
+      setSelected(null);
+      setInput("");
+      setHardcoreFeedback(null);
+      return;
+    }
+
+    setShowResult(true);
   };
 
   const handleAnswer = (answer) => {
@@ -182,6 +213,7 @@ function GameContent() {
       setScore((prev) => prev + 1);
       playCorrectSound();
     } else {
+      addMistake(current);
       playWrongSound();
     }
 
@@ -204,6 +236,7 @@ function GameContent() {
       setScore((prev) => prev + 1);
       playCorrectSound();
     } else {
+      addMistake(current);
       playWrongSound();
     }
 
@@ -230,7 +263,11 @@ function GameContent() {
           </p>
 
           <p className="score">
-            {score} / {TOTAL_QUESTIONS}
+            {score} / {questions.length + reviewQuestions.length}
+          </p>
+
+          <p className="resultMeta">
+            Fehlerbuchstaben in Extra-Runde: {reviewQuestions.length}
           </p>
 
           <p className="resultMeta">
@@ -287,10 +324,15 @@ function GameContent() {
         <div className="topbar">
           <span>{getAlphabetLabel(alphabetType)}</span>
           <span>{getModeLabel(mode)}</span>
+          <span>{isReviewRound ? "Extra-Runde" : "Hauptrunde"}</span>
           <span>Punkte: {score}</span>
         </div>
 
-        <ProgressBar current={currentIndex + 1} total={TOTAL_QUESTIONS} />
+        <ProgressBar current={currentIndex + 1} total={totalForProgress} />
+
+        {isReviewRound && (
+          <div className="reviewBadge">Schwierige Buchstaben nochmal üben</div>
+        )}
 
         <div className="char">{current.char}</div>
 
