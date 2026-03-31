@@ -492,5 +492,12 @@ button:disabled {
   font-size: 14px;
   font-weight: 700;
 }
+
+.authHint {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(245, 247, 251, 0.62);
+  line-height: 1.4;
+}
   }
 }
