@@ -1,0 +1,269 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: linear-gradient(180deg, #0b1020 0%, #11172a 100%);
+  color: #f5f7fb;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+  transition:
+    transform 0.15s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 680px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 28px;
+  padding: 32px;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.title {
+  margin: 0;
+  font-size: 44px;
+  line-height: 1.05;
+  text-align: center;
+  letter-spacing: -0.03em;
+}
+
+.subtitle {
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 17px;
+  line-height: 1.5;
+  color: rgba(245, 247, 251, 0.8);
+}
+
+.section {
+  margin-top: 30px;
+}
+
+.section h2 {
+  margin: 0 0 14px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.options {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.options button,
+.startButton,
+.inputArea button,
+.card > button {
+  width: 100%;
+  min-height: 56px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5f7fb;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.options button:hover,
+.startButton:hover,
+.inputArea button:hover,
+.card > button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.options button.active {
+  background: rgba(110, 168, 255, 0.2);
+  border-color: rgba(110, 168, 255, 0.55);
+  box-shadow: 0 0 0 1px rgba(110, 168, 255, 0.18) inset;
+}
+
+.startButton {
+  margin-top: 30px;
+  min-height: 60px;
+  font-size: 17px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 26px;
+  font-size: 15px;
+  color: rgba(245, 247, 251, 0.82);
+}
+
+.char {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  margin-bottom: 26px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 96px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+.inputArea {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.inputArea input {
+  width: 100%;
+  min-height: 56px;
+  padding: 0 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5f7fb;
+  outline: none;
+  font-size: 16px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.inputArea input::placeholder {
+  color: rgba(245, 247, 251, 0.45);
+}
+
+.inputArea input:focus {
+  border-color: rgba(110, 168, 255, 0.6);
+  box-shadow: 0 0 0 3px rgba(110, 168, 255, 0.14);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.correct {
+  background: rgba(37, 211, 102, 0.2) !important;
+  border-color: rgba(37, 211, 102, 0.55) !important;
+  color: #ffffff !important;
+}
+
+.wrong {
+  background: rgba(255, 59, 48, 0.2) !important;
+  border-color: rgba(255, 59, 48, 0.55) !important;
+  color: #ffffff !important;
+}
+
+.score {
+  margin: 12px 0 24px;
+  font-size: 44px;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: -0.03em;
+}
+
+.card h1 {
+  margin: 0;
+  text-align: center;
+  font-size: 38px;
+  letter-spacing: -0.03em;
+}
+
+.card > button + button {
+  margin-top: 12px;
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 16px;
+  }
+
+  .card {
+    padding: 22px;
+    border-radius: 24px;
+  }
+
+  .title {
+    font-size: 34px;
+  }
+
+  .subtitle {
+    font-size: 15px;
+  }
+
+  .section {
+    margin-top: 24px;
+  }
+
+  .char {
+    min-height: 150px;
+    font-size: 76px;
+    margin-bottom: 22px;
+  }
+
+  .topbar {
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+
+  .score {
+    font-size: 36px;
+  }
+
+  .card h1 {
+    font-size: 32px;
+  }
+
+  .options button,
+  .startButton,
+  .inputArea button,
+  .card > button,
+  .inputArea input {
+    min-height: 52px;
+    font-size: 15px;
+  }
+}
