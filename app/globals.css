@@ -480,5 +480,17 @@ button:disabled {
   background: rgba(255, 59, 48, 0.14);
   border-color: rgba(255, 59, 48, 0.35);
 }
+
+    .reviewBadge {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(110, 168, 255, 0.14);
+  border: 1px solid rgba(110, 168, 255, 0.28);
+  color: #f5f7fb;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+}
   }
 }
