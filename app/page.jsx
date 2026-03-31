@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
@@ -21,11 +22,11 @@ export default function Home() {
           Trainiere kyrillische Buchstaben – Casual & Hardcore
         </p>
 
-        {/* Alphabet Auswahl */}
         <div className="section">
           <h2>Alphabet wählen</h2>
           <div className="options">
             <button
+              type="button"
               className={alphabet === "ukrainian" ? "active" : ""}
               onClick={() => setAlphabet("ukrainian")}
             >
@@ -33,6 +34,7 @@ export default function Home() {
             </button>
 
             <button
+              type="button"
               className={alphabet === "russian" ? "active" : ""}
               onClick={() => setAlphabet("russian")}
             >
@@ -41,11 +43,11 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Modus Auswahl */}
         <div className="section">
           <h2>Modus wählen</h2>
           <div className="options">
             <button
+              type="button"
               className={mode === "casual" ? "active" : ""}
               onClick={() => setMode("casual")}
             >
@@ -53,6 +55,7 @@ export default function Home() {
             </button>
 
             <button
+              type="button"
               className={mode === "hardcore" ? "active" : ""}
               onClick={() => setMode("hardcore")}
             >
@@ -61,10 +64,15 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Start Button */}
-        <button className="startButton" onClick={startGame}>
+        <button type="button" className="startButton" onClick={startGame}>
           Spiel starten
         </button>
+
+        <div className="bottomLinks homeLinks">
+          <Link href="/stats" className="textLink">
+            Statistik ansehen
+          </Link>
+        </div>
       </div>
     </main>
   );
