@@ -92,7 +92,7 @@ export default function Home() {
       <div className="card">
         <h1 className="title">Cyrillic Lab</h1>
         <p className="subtitle">
-          Trainiere kyrillische Buchstaben – Casual, Hardcore & bald Infinity
+          Trainiere kyrillische Buchstaben – Casual, Hardcore & Infinity
         </p>
 
         {!loadingSession && session ? (
@@ -162,6 +162,14 @@ export default function Home() {
               onClick={() => setMode("hardcore")}
             >
               Hardcore (selbst eingeben)
+            </button>
+
+            <button
+              type="button"
+              className={mode === "infinity" ? "active" : ""}
+              onClick={() => setMode("infinity")}
+            >
+              Infinity (Endlos bis Fehler)
             </button>
           </div>
         </div>
