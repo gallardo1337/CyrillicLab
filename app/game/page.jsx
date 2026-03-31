@@ -1,13 +1,62 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ukrainianAlphabet, russianAlphabet } from "../../lib/alphabetData";
+import ProgressBar from "../../components/ProgressBar";
+import AnswerButton from "../../components/AnswerButton";
+import {
+  TOTAL_QUESTIONS,
+  pickQuestions,
+  generateOptions,
+  isCorrectAnswer,
+  getAlphabetLabel,
+  getModeLabel,
+  normalize,
+} from "../../lib/gameUtils";
 
-const TOTAL_QUESTIONS = 10;
+const STORAGE_KEY = "cyrillic-lab-stats";
 
-function normalize(input) {
-  return input.trim().toLowerCase();
+function saveStats({ score, totalQuestions, mode, alphabetType }) {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const existing = raw
+      ? JSON.parse(raw)
+      : {
+          totalGames: 0,
+          totalCorrect: 0,
+          totalQuestions: 0,
+          bestScore: 0,
+          lastScore: 0,
+          casualGames: 0,
+          hardcoreGames: 0,
+          ukrainianGames: 0,
+          russianGames: 0,
+        };
+
+    const nextStats = {
+      ...existing,
+      totalGames: (existing.totalGames || 0) + 1,
+      totalCorrect: (existing.totalCorrect || 0) + score,
+      totalQuestions: (existing.totalQuestions || 0) + totalQuestions,
+      bestScore: Math.max(existing.bestScore || 0, score),
+      lastScore: score,
+      casualGames:
+        (existing.casualGames || 0) + (mode === "casual" ? 1 : 0),
+      hardcoreGames:
+        (existing.hardcoreGames || 0) + (mode === "hardcore" ? 1 : 0),
+      ukrainianGames:
+        (existing.ukrainianGames || 0) +
+        (alphabetType === "ukrainian" ? 1 : 0),
+      russianGames:
+        (existing.russianGames || 0) + (alphabetType === "russian" ? 1 : 0),
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextStats));
+  } catch {
+    // absichtlich still
+  }
 }
 
 function GameContent() {
@@ -30,8 +79,7 @@ function GameContent() {
   const [options, setOptions] = useState([]);
 
   useEffect(() => {
-    const shuffled = [...alphabet].sort(() => Math.random() - 0.5);
-    const picked = shuffled.slice(0, TOTAL_QUESTIONS);
+    const picked = pickQuestions(alphabet, TOTAL_QUESTIONS);
 
     setQuestions(picked);
     setCurrentIndex(0);
@@ -39,7 +87,7 @@ function GameContent() {
     setSelected(null);
     setInput("");
     setShowResult(false);
-  }, [alphabet]);
+  }, [alphabet, mode]);
 
   useEffect(() => {
     if (
@@ -51,18 +99,19 @@ function GameContent() {
       return;
     }
 
-    const current = questions[currentIndex];
-    const correct = current.answers[0];
-
-    const wrong = alphabet
-      .filter((letter) => letter.answers[0] !== correct)
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 2)
-      .map((letter) => letter.answers[0]);
-
-    const mixedOptions = [...wrong, correct].sort(() => Math.random() - 0.5);
-    setOptions(mixedOptions);
+    setOptions(generateOptions(questions[currentIndex], alphabet, 3));
   }, [mode, questions, currentIndex, alphabet]);
+
+  useEffect(() => {
+    if (showResult) {
+      saveStats({
+        score,
+        totalQuestions: TOTAL_QUESTIONS,
+        mode,
+        alphabetType,
+      });
+    }
+  }, [showResult, score, mode, alphabetType]);
 
   if (questions.length === 0) {
     return (
@@ -90,10 +139,9 @@ function GameContent() {
   const handleAnswer = (answer) => {
     if (selected !== null) return;
 
-    const correctAnswers = current.answers.map((a) => normalize(a));
-    const isCorrect = correctAnswers.includes(normalize(answer));
+    const correct = isCorrectAnswer(answer, current.answers);
 
-    if (isCorrect) {
+    if (correct) {
       setScore((prev) => prev + 1);
     }
 
@@ -110,10 +158,9 @@ function GameContent() {
     const cleanedInput = normalize(input);
     if (!cleanedInput) return;
 
-    const correctAnswers = current.answers.map((a) => normalize(a));
-    const isCorrect = correctAnswers.includes(cleanedInput);
+    const correct = isCorrectAnswer(cleanedInput, current.answers);
 
-    if (isCorrect) {
+    if (correct) {
       setScore((prev) => prev + 1);
     }
 
@@ -129,19 +176,33 @@ function GameContent() {
       <main className="container">
         <div className="card">
           <h1>Ergebnis</h1>
+
+          <p className="resultMeta">
+            {getAlphabetLabel(alphabetType)} • {getModeLabel(mode)}
+          </p>
+
           <p className="score">
             {score} / {TOTAL_QUESTIONS}
           </p>
 
-          <button onClick={() => router.push("/")}>Zurück zum Menü</button>
+          <div className="resultActions">
+            <button type="button" onClick={() => router.push("/")}>
+              Zurück zum Menü
+            </button>
 
-          <button
-            onClick={() =>
-              router.push(`/game?alphabet=${alphabetType}&mode=${mode}`)
-            }
-          >
-            Nochmal spielen
-          </button>
+            <button
+              type="button"
+              onClick={() =>
+                router.push(`/game?alphabet=${alphabetType}&mode=${mode}`)
+              }
+            >
+              Nochmal spielen
+            </button>
+
+            <Link href="/stats" className="linkButton">
+              Statistik ansehen
+            </Link>
+          </div>
         </div>
       </main>
     );
@@ -151,11 +212,15 @@ function GameContent() {
     <main className="container">
       <div className="card">
         <div className="topbar">
-          <span>
-            {currentIndex + 1} / {TOTAL_QUESTIONS}
-          </span>
+          <span>{getAlphabetLabel(alphabetType)}</span>
+          <span>{getModeLabel(mode)}</span>
           <span>Punkte: {score}</span>
         </div>
+
+        <ProgressBar
+          current={currentIndex + 1}
+          total={TOTAL_QUESTIONS}
+        />
 
         <div className="char">{current.char}</div>
 
@@ -173,13 +238,14 @@ function GameContent() {
               }
 
               return (
-                <button
+                <AnswerButton
                   key={`${opt}-${i}`}
                   className={className}
+                  disabled={selected !== null}
                   onClick={() => handleAnswer(opt)}
                 >
                   {opt}
-                </button>
+                </AnswerButton>
               );
             })}
           </div>
@@ -195,9 +261,24 @@ function GameContent() {
                 if (e.key === "Enter") handleSubmit();
               }}
             />
-            <button onClick={handleSubmit}>Prüfen</button>
+
+            <AnswerButton
+              onClick={handleSubmit}
+              disabled={selected !== null}
+            >
+              Prüfen
+            </AnswerButton>
           </div>
         )}
+
+        <div className="bottomLinks">
+          <Link href="/" className="textLink">
+            Menü
+          </Link>
+          <Link href="/stats" className="textLink">
+            Statistik
+          </Link>
+        </div>
       </div>
     </main>
   );
