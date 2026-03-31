@@ -16,6 +16,11 @@ body {
   min-height: 100vh;
 }
 
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
 button,
 input {
   font: inherit;
@@ -38,6 +43,11 @@ button:hover {
 
 button:active {
   transform: translateY(0);
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.9;
 }
 
 .container {
@@ -98,7 +108,10 @@ button:active {
 .options button,
 .startButton,
 .inputArea button,
-.card > button {
+.card > button,
+.answerButton,
+.linkButton,
+.dangerButton {
   width: 100%;
   min-height: 56px;
   padding: 14px 18px;
@@ -108,12 +121,18 @@ button:active {
   border: 1px solid rgba(255, 255, 255, 0.12);
   font-size: 16px;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .options button:hover,
 .startButton:hover,
 .inputArea button:hover,
-.card > button:hover {
+.card > button:hover,
+.answerButton:hover,
+.linkButton:hover,
+.dangerButton:hover {
   background: rgba(255, 255, 255, 0.12);
 }
 
@@ -134,9 +153,39 @@ button:active {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 26px;
+  margin-bottom: 18px;
   font-size: 15px;
   color: rgba(245, 247, 251, 0.82);
+  flex-wrap: wrap;
+}
+
+.progressWrap {
+  margin-bottom: 24px;
+}
+
+.progressMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: rgba(245, 247, 251, 0.78);
+}
+
+.progressTrack {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6ea8ff 0%, #8c7dff 100%);
 }
 
 .char {
@@ -217,6 +266,82 @@ button:active {
   margin-top: 12px;
 }
 
+.resultMeta {
+  margin: 12px 0 0;
+  text-align: center;
+  color: rgba(245, 247, 251, 0.78);
+  font-size: 15px;
+}
+
+.resultActions {
+  display: grid;
+  gap: 12px;
+}
+
+.bottomLinks {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.homeLinks {
+  margin-top: 20px;
+}
+
+.textLink {
+  color: rgba(245, 247, 251, 0.82);
+  font-size: 15px;
+}
+
+.textLink:hover {
+  color: #ffffff;
+}
+
+.statsGrid {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.statBox {
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.statLabel {
+  display: block;
+  font-size: 14px;
+  color: rgba(245, 247, 251, 0.74);
+  margin-bottom: 8px;
+}
+
+.statValue {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.statsActions {
+  margin-top: 22px;
+  display: grid;
+  gap: 12px;
+}
+
+.dangerButton {
+  background: rgba(255, 59, 48, 0.16);
+  border-color: rgba(255, 59, 48, 0.32);
+}
+
+.dangerButton:hover {
+  background: rgba(255, 59, 48, 0.22);
+}
+
 @media (max-width: 640px) {
   .container {
     padding: 16px;
@@ -247,7 +372,7 @@ button:active {
 
   .topbar {
     font-size: 14px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
 
   .score {
@@ -258,11 +383,18 @@ button:active {
     font-size: 32px;
   }
 
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
   .options button,
   .startButton,
   .inputArea button,
   .card > button,
-  .inputArea input {
+  .inputArea input,
+  .answerButton,
+  .linkButton,
+  .dangerButton {
     min-height: 52px;
     font-size: 15px;
   }
