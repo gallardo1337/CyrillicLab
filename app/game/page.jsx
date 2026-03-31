@@ -1,11 +1,12 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ukrainianAlphabet, russianAlphabet } from "../../lib/alphabetData";
 import ProgressBar from "../../components/ProgressBar";
 import AnswerButton from "../../components/AnswerButton";
+import { supabase } from "../../lib/supabase";
 import {
   TOTAL_QUESTIONS,
   pickQuestions,
@@ -18,7 +19,7 @@ import {
 
 const STORAGE_KEY = "cyrillic-lab-stats";
 
-function saveStats({ score, totalQuestions, mode, alphabetType }) {
+function saveLocalStats({ score, totalQuestions, mode, alphabetType }) {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const existing = raw
@@ -59,6 +60,28 @@ function saveStats({ score, totalQuestions, mode, alphabetType }) {
   }
 }
 
+async function saveGameResultToSupabase({
+  score,
+  totalQuestions,
+  mode,
+  alphabetType,
+}) {
+  const accuracy =
+    totalQuestions > 0 ? Number(((score / totalQuestions) * 100).toFixed(2)) : 0;
+
+  const { error } = await supabase.from("game_results").insert({
+    alphabet: alphabetType,
+    mode,
+    score,
+    total_questions: totalQuestions,
+    accuracy,
+  });
+
+  if (error) {
+    console.error("Supabase insert error:", error.message);
+  }
+}
+
 function GameContent() {
   const params = useSearchParams();
   const router = useRouter();
@@ -77,6 +100,8 @@ function GameContent() {
   const [input, setInput] = useState("");
   const [showResult, setShowResult] = useState(false);
   const [options, setOptions] = useState([]);
+  const [saveStatus, setSaveStatus] = useState("idle");
+  const hasSavedRef = useRef(false);
 
   useEffect(() => {
     const picked = pickQuestions(alphabet, TOTAL_QUESTIONS);
@@ -87,6 +112,8 @@ function GameContent() {
     setSelected(null);
     setInput("");
     setShowResult(false);
+    setSaveStatus("idle");
+    hasSavedRef.current = false;
   }, [alphabet, mode]);
 
   useEffect(() => {
@@ -103,14 +130,27 @@ function GameContent() {
   }, [mode, questions, currentIndex, alphabet]);
 
   useEffect(() => {
-    if (showResult) {
-      saveStats({
-        score,
-        totalQuestions: TOTAL_QUESTIONS,
-        mode,
-        alphabetType,
-      });
-    }
+    if (!showResult || hasSavedRef.current) return;
+
+    hasSavedRef.current = true;
+
+    saveLocalStats({
+      score,
+      totalQuestions: TOTAL_QUESTIONS,
+      mode,
+      alphabetType,
+    });
+
+    setSaveStatus("saving");
+
+    saveGameResultToSupabase({
+      score,
+      totalQuestions: TOTAL_QUESTIONS,
+      mode,
+      alphabetType,
+    })
+      .then(() => setSaveStatus("saved"))
+      .catch(() => setSaveStatus("error"));
   }, [showResult, score, mode, alphabetType]);
 
   if (questions.length === 0) {
@@ -185,6 +225,12 @@ function GameContent() {
             {score} / {TOTAL_QUESTIONS}
           </p>
 
+          <p className="resultMeta">
+            {saveStatus === "saving" && "Speichere Ergebnis..."}
+            {saveStatus === "saved" && "Ergebnis gespeichert."}
+            {saveStatus === "error" && "Speichern fehlgeschlagen."}
+          </p>
+
           <div className="resultActions">
             <button type="button" onClick={() => router.push("/")}>
               Zurück zum Menü
@@ -217,10 +263,7 @@ function GameContent() {
           <span>Punkte: {score}</span>
         </div>
 
-        <ProgressBar
-          current={currentIndex + 1}
-          total={TOTAL_QUESTIONS}
-        />
+        <ProgressBar current={currentIndex + 1} total={TOTAL_QUESTIONS} />
 
         <div className="char">{current.char}</div>
 
