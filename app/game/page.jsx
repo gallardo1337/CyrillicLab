@@ -63,6 +63,7 @@ function GameContent() {
   const [saveStatus, setSaveStatus] = useState("idle");
   const [sessionChecked, setSessionChecked] = useState(false);
   const [session, setSession] = useState(null);
+  const [hardcoreFeedback, setHardcoreFeedback] = useState(null);
   const hasSavedRef = useRef(false);
 
   useEffect(() => {
@@ -94,7 +95,9 @@ function GameContent() {
     setSelected(null);
     setInput("");
     setShowResult(false);
+    setOptions([]);
     setSaveStatus("idle");
+    setHardcoreFeedback(null);
     hasSavedRef.current = false;
   }, [alphabet, mode]);
 
@@ -153,6 +156,7 @@ function GameContent() {
   const nextQuestion = () => {
     setSelected(null);
     setInput("");
+    setHardcoreFeedback(null);
 
     if (currentIndex + 1 >= TOTAL_QUESTIONS) {
       setShowResult(true);
@@ -196,10 +200,15 @@ function GameContent() {
     }
 
     setSelected(input);
+    setHardcoreFeedback({
+      userInput: input.trim(),
+      correctAnswers: current.answers,
+      isCorrect: correct,
+    });
 
     setTimeout(() => {
       nextQuestion();
-    }, 800);
+    }, 1400);
   };
 
   if (showResult) {
@@ -294,6 +303,7 @@ function GameContent() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleSubmit();
               }}
+              disabled={selected !== null}
             />
 
             <AnswerButton
@@ -302,6 +312,23 @@ function GameContent() {
             >
               Prüfen
             </AnswerButton>
+
+            {hardcoreFeedback && (
+              <div
+                className={`hardcoreFeedback ${
+                  hardcoreFeedback.isCorrect ? "feedbackCorrect" : "feedbackWrong"
+                }`}
+              >
+                <p>
+                  <strong>Deine Eingabe:</strong>{" "}
+                  {hardcoreFeedback.userInput || "—"}
+                </p>
+                <p>
+                  <strong>Richtige Antwort:</strong>{" "}
+                  {hardcoreFeedback.correctAnswers.join(" / ")}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
