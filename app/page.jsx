@@ -37,11 +37,6 @@ export default function Home() {
   }, []);
 
   const startGame = () => {
-    if (!session) {
-      router.push("/login");
-      return;
-    }
-
     router.push(`/game?alphabet=${alphabet}&mode=${mode}`);
   };
 
@@ -67,8 +62,8 @@ export default function Home() {
         {!loadingSession && !session ? (
           <div className="authBox">
             <p className="authInfo">
-              Bitte logge dich ein oder registriere dich, damit deine Ergebnisse
-              gespeichert werden.
+              Du kannst auch ohne Login spielen. Mit Konto werden deine
+              Ergebnisse und persönlichen Statistiken gespeichert.
             </p>
 
             <div className="authActions">
