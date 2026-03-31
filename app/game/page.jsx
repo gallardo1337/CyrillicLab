@@ -238,7 +238,9 @@ function GameContent() {
     );
   }
 
-  const totalForProgress = isInfinityMode ? Math.max(score + 1, 1) : activeQuestions.length;
+  const totalForProgress = isInfinityMode
+    ? Math.max(score + 1, 1)
+    : activeQuestions.length;
 
   const addMistake = (question) => {
     setMistakes((prev) => {
@@ -436,6 +438,10 @@ function GameContent() {
             <Link href="/stats" className="linkButton">
               Meine Statistik
             </Link>
+
+            <Link href="/leaderboard" className="linkButton">
+              Bestenliste
+            </Link>
           </div>
         </div>
       </main>
@@ -558,6 +564,9 @@ function GameContent() {
           </Link>
           <Link href="/stats" className="textLink">
             Meine Statistik
+          </Link>
+          <Link href="/leaderboard" className="textLink">
+            Bestenliste
           </Link>
         </div>
       </div>
