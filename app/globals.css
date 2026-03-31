@@ -499,5 +499,30 @@ button:disabled {
   color: rgba(245, 247, 251, 0.62);
   line-height: 1.4;
 }
+
+.topbarSecondary {
+  margin-top: -8px;
+  margin-bottom: 18px;
+}
+
+.smallActionButton {
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: rgba(255, 59, 48, 0.14);
+  border: 1px solid rgba(255, 59, 48, 0.32);
+  color: #f5f7fb;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.smallActionButton:hover {
+  background: rgba(255, 59, 48, 0.22);
+}
+
+.infinityBadge {
+  background: rgba(140, 125, 255, 0.14);
+  border-color: rgba(140, 125, 255, 0.28);
+}
   }
 }
