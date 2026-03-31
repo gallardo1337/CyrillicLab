@@ -16,6 +16,7 @@ import {
   getAlphabetLabel,
   getModeLabel,
   normalize,
+  formatDurationMs,
 } from "../../lib/gameUtils";
 
 async function saveGameResultToSupabase({
@@ -24,18 +25,27 @@ async function saveGameResultToSupabase({
   totalQuestions,
   mode,
   alphabetType,
+  durationMs,
+  endedBy,
 }) {
   const accuracy =
     totalQuestions > 0 ? Number(((score / totalQuestions) * 100).toFixed(2)) : 0;
 
-  const { error } = await supabase.from("game_results").insert({
+  const isInfinity = mode === "infinity";
+
+  const payload = {
     user_id: userId,
     alphabet: alphabetType,
     mode,
     score,
-    total_questions: totalQuestions,
+    total_questions: isInfinity ? score : totalQuestions,
     accuracy,
-  });
+    duration_ms: durationMs,
+    ended_by: endedBy,
+    is_infinity: isInfinity,
+  };
+
+  const { error } = await supabase.from("game_results").insert(payload);
 
   if (error) {
     throw new Error(error.message);
@@ -48,6 +58,7 @@ function GameContent() {
 
   const alphabetType = params.get("alphabet") || "ukrainian";
   const mode = params.get("mode") || "casual";
+  const isInfinityMode = mode === "infinity";
 
   const alphabet = useMemo(() => {
     return alphabetType === "russian" ? russianAlphabet : ukrainianAlphabet;
@@ -68,7 +79,12 @@ function GameContent() {
   const [session, setSession] = useState(null);
   const [hardcoreFeedback, setHardcoreFeedback] = useState(null);
   const [mistakes, setMistakes] = useState([]);
+  const [endedBy, setEndedBy] = useState("completed");
+  const [elapsedMs, setElapsedMs] = useState(0);
+
   const hasSavedRef = useRef(false);
+  const startTimeRef = useRef(null);
+  const timerRef = useRef(null);
 
   const activeQuestions = isReviewRound ? reviewQuestions : questions;
   const current = activeQuestions[currentIndex];
@@ -96,9 +112,13 @@ function GameContent() {
   }, []);
 
   useEffect(() => {
-    const picked = pickQuestions(alphabet, TOTAL_QUESTIONS);
+    if (isInfinityMode) {
+      const first = alphabet[Math.floor(Math.random() * alphabet.length)];
+      setQuestions(first ? [first] : []);
+    } else {
+      setQuestions(pickQuestions(alphabet, TOTAL_QUESTIONS));
+    }
 
-    setQuestions(picked);
     setReviewQuestions([]);
     setIsReviewRound(false);
     setCurrentIndex(0);
@@ -110,10 +130,42 @@ function GameContent() {
     setSaveStatus("idle");
     setHardcoreFeedback(null);
     setMistakes([]);
+    setEndedBy("completed");
+    setElapsedMs(0);
+
+    startTimeRef.current = Date.now();
     hasSavedRef.current = false;
-  }, [alphabet, mode]);
+  }, [alphabet, mode, isInfinityMode]);
 
   useEffect(() => {
+    if (showResult) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      return;
+    }
+
+    if (!startTimeRef.current) return;
+
+    timerRef.current = setInterval(() => {
+      setElapsedMs(Date.now() - startTimeRef.current);
+    }, 50);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [showResult]);
+
+  useEffect(() => {
+    if (isInfinityMode) {
+      setOptions([]);
+      return;
+    }
+
     if (
       mode !== "casual" ||
       activeQuestions.length === 0 ||
@@ -124,7 +176,7 @@ function GameContent() {
     }
 
     setOptions(generateOptions(activeQuestions[currentIndex], alphabet, 3));
-  }, [mode, activeQuestions, currentIndex, alphabet]);
+  }, [mode, activeQuestions, currentIndex, alphabet, isInfinityMode]);
 
   useEffect(() => {
     if (!showResult || hasSavedRef.current) return;
@@ -138,16 +190,33 @@ function GameContent() {
 
     setSaveStatus("saving");
 
+    const totalQuestionsForSave = isInfinityMode
+      ? score
+      : questions.length + reviewQuestions.length;
+
     saveGameResultToSupabase({
       userId: session.user.id,
       score,
-      totalQuestions: questions.length,
+      totalQuestions: totalQuestionsForSave,
       mode,
       alphabetType,
+      durationMs: elapsedMs,
+      endedBy,
     })
       .then(() => setSaveStatus("saved"))
       .catch(() => setSaveStatus("error"));
-  }, [showResult, score, mode, alphabetType, session, questions.length]);
+  }, [
+    showResult,
+    score,
+    mode,
+    alphabetType,
+    session,
+    questions.length,
+    reviewQuestions.length,
+    elapsedMs,
+    endedBy,
+    isInfinityMode,
+  ]);
 
   if (!sessionChecked) {
     return (
@@ -169,7 +238,7 @@ function GameContent() {
     );
   }
 
-  const totalForProgress = activeQuestions.length;
+  const totalForProgress = isInfinityMode ? Math.max(score + 1, 1) : activeQuestions.length;
 
   const addMistake = (question) => {
     setMistakes((prev) => {
@@ -179,7 +248,28 @@ function GameContent() {
     });
   };
 
+  const pushNextInfinityQuestion = () => {
+    const next = alphabet[Math.floor(Math.random() * alphabet.length)];
+    if (!next) return;
+
+    setQuestions([next]);
+    setCurrentIndex(0);
+    setSelected(null);
+    setInput("");
+    setHardcoreFeedback(null);
+  };
+
+  const finishGame = (reason = "completed") => {
+    setEndedBy(reason);
+    setShowResult(true);
+  };
+
   const nextQuestion = () => {
+    if (isInfinityMode) {
+      pushNextInfinityQuestion();
+      return;
+    }
+
     setSelected(null);
     setInput("");
     setHardcoreFeedback(null);
@@ -201,7 +291,7 @@ function GameContent() {
       return;
     }
 
-    setShowResult(true);
+    finishGame("completed");
   };
 
   const handleAnswer = (answer) => {
@@ -236,8 +326,10 @@ function GameContent() {
       setScore((prev) => prev + 1);
       playCorrectSound();
     } else {
-      addMistake(current);
       playWrongSound();
+      if (!isInfinityMode) {
+        addMistake(current);
+      }
     }
 
     setSelected(input);
@@ -247,12 +339,29 @@ function GameContent() {
       isCorrect: correct,
     });
 
+    if (isInfinityMode) {
+      if (!correct) {
+        setTimeout(() => {
+          finishGame("wrong_answer");
+        }, 1400);
+      } else {
+        setTimeout(() => {
+          nextQuestion();
+        }, 900);
+      }
+      return;
+    }
+
     setTimeout(() => {
       nextQuestion();
     }, 1400);
   };
 
   if (showResult) {
+    const totalShown = isInfinityMode
+      ? score
+      : questions.length + reviewQuestions.length;
+
     return (
       <main className="container">
         <div className="card">
@@ -263,12 +372,27 @@ function GameContent() {
           </p>
 
           <p className="score">
-            {score} / {questions.length + reviewQuestions.length}
+            {score} / {totalShown}
           </p>
 
-          <p className="resultMeta">
-            Fehlerbuchstaben in Extra-Runde: {reviewQuestions.length}
-          </p>
+          <p className="resultMeta">Zeit: {formatDurationMs(elapsedMs)}</p>
+
+          {isInfinityMode && (
+            <p className="resultMeta">
+              Ende:{" "}
+              {endedBy === "wrong_answer"
+                ? "Durch Fehler"
+                : endedBy === "manual_exit"
+                  ? "Manuell beendet"
+                  : "Beendet"}
+            </p>
+          )}
+
+          {!isInfinityMode && (
+            <p className="resultMeta">
+              Fehlerbuchstaben in Extra-Runde: {reviewQuestions.length}
+            </p>
+          )}
 
           <p className="resultMeta">
             {saveStatus === "guest" &&
@@ -324,19 +448,46 @@ function GameContent() {
         <div className="topbar">
           <span>{getAlphabetLabel(alphabetType)}</span>
           <span>{getModeLabel(mode)}</span>
-          <span>{isReviewRound ? "Extra-Runde" : "Hauptrunde"}</span>
+          <span>
+            {isInfinityMode
+              ? "Endloslauf"
+              : isReviewRound
+                ? "Extra-Runde"
+                : "Hauptrunde"}
+          </span>
           <span>Punkte: {score}</span>
         </div>
 
-        <ProgressBar current={currentIndex + 1} total={totalForProgress} />
+        <div className="topbar topbarSecondary">
+          <span>Zeit: {formatDurationMs(elapsedMs)}</span>
+          {isInfinityMode && (
+            <button
+              type="button"
+              className="smallActionButton"
+              onClick={() => finishGame("manual_exit")}
+            >
+              Beenden
+            </button>
+          )}
+        </div>
 
-        {isReviewRound && (
+        {!isInfinityMode && (
+          <ProgressBar current={currentIndex + 1} total={totalForProgress} />
+        )}
+
+        {isReviewRound && !isInfinityMode && (
           <div className="reviewBadge">Schwierige Buchstaben nochmal üben</div>
+        )}
+
+        {isInfinityMode && (
+          <div className="reviewBadge infinityBadge">
+            Infinity läuft bis zur ersten falschen Antwort
+          </div>
         )}
 
         <div className="char">{current.char}</div>
 
-        {mode === "casual" && (
+        {mode === "casual" && !isInfinityMode && (
           <div className="options">
             {options.map((opt, i) => {
               const correctAnswer = current.answers[0];
@@ -363,7 +514,7 @@ function GameContent() {
           </div>
         )}
 
-        {mode === "hardcore" && (
+        {(mode === "hardcore" || isInfinityMode) && (
           <div className="inputArea">
             <input
               value={input}
