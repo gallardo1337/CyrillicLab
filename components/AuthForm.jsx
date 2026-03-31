@@ -4,9 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
+function isValidUsername(value) {
+  return /^[A-Za-z0-9_]+$/.test(value);
+}
+
 export default function AuthForm({ mode = "login" }) {
   const router = useRouter();
 
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
@@ -22,6 +27,7 @@ export default function AuthForm({ mode = "login" }) {
     setMessage("");
     setErrorText("");
 
+    const cleanUsername = username.trim();
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
     const cleanRepeat = repeatPassword.trim();
@@ -30,6 +36,28 @@ export default function AuthForm({ mode = "login" }) {
       setErrorText("Bitte E-Mail und Passwort eingeben.");
       setLoading(false);
       return;
+    }
+
+    if (isSignup) {
+      if (!cleanUsername) {
+        setErrorText("Bitte einen Username eingeben.");
+        setLoading(false);
+        return;
+      }
+
+      if (cleanUsername.length < 3 || cleanUsername.length > 20) {
+        setErrorText("Der Username muss zwischen 3 und 20 Zeichen lang sein.");
+        setLoading(false);
+        return;
+      }
+
+      if (!isValidUsername(cleanUsername)) {
+        setErrorText(
+          "Der Username darf nur Buchstaben, Zahlen und Unterstriche enthalten."
+        );
+        setLoading(false);
+        return;
+      }
     }
 
     if (cleanPassword.length < 6) {
@@ -49,6 +77,11 @@ export default function AuthForm({ mode = "login" }) {
         const { error } = await supabase.auth.signUp({
           email: cleanEmail,
           password: cleanPassword,
+          options: {
+            data: {
+              username: cleanUsername,
+            },
+          },
         });
 
         if (error) {
@@ -58,8 +91,12 @@ export default function AuthForm({ mode = "login" }) {
         }
 
         setMessage(
-          "Registrierung erfolgreich. Prüfe ggf. deine E-Mails zur Bestätigung oder logge dich direkt ein."
+          "Registrierung erfolgreich. Du kannst dich jetzt einloggen."
         );
+        setUsername("");
+        setEmail("");
+        setPassword("");
+        setRepeatPassword("");
         setLoading(false);
         return;
       }
@@ -86,6 +123,24 @@ export default function AuthForm({ mode = "login" }) {
 
   return (
     <form className="authForm" onSubmit={handleSubmit}>
+      {isSignup && (
+        <div className="authField">
+          <label htmlFor="username">Username</label>
+          <input
+            id="username"
+            type="text"
+            placeholder="z. B. Kevin_91"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoComplete="username"
+            maxLength={20}
+          />
+          <p className="authHint">
+            3–20 Zeichen, nur Buchstaben, Zahlen und Unterstriche
+          </p>
+        </div>
+      )}
+
       <div className="authField">
         <label htmlFor="email">E-Mail</label>
         <input
