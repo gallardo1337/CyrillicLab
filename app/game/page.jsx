@@ -71,20 +71,22 @@ function GameContent() {
 
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
-
-      const currentSession = data.session || null;
-      setSession(currentSession);
+      setSession(data.session || null);
       setSessionChecked(true);
+    });
 
-      if (!currentSession) {
-        router.push("/login");
-      }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession || null);
+      setSessionChecked(true);
     });
 
     return () => {
       mounted = false;
+      subscription.unsubscribe();
     };
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     const picked = pickQuestions(alphabet, TOTAL_QUESTIONS);
@@ -115,9 +117,15 @@ function GameContent() {
   }, [mode, questions, currentIndex, alphabet]);
 
   useEffect(() => {
-    if (!showResult || hasSavedRef.current || !session?.user?.id) return;
+    if (!showResult || hasSavedRef.current) return;
 
     hasSavedRef.current = true;
+
+    if (!session?.user?.id) {
+      setSaveStatus("guest");
+      return;
+    }
+
     setSaveStatus("saving");
 
     saveGameResultToSupabase({
@@ -131,7 +139,7 @@ function GameContent() {
       .catch(() => setSaveStatus("error"));
   }, [showResult, score, mode, alphabetType, session]);
 
-  if (!sessionChecked || !session) {
+  if (!sessionChecked) {
     return (
       <main className="container">
         <div className="card">
@@ -226,10 +234,29 @@ function GameContent() {
           </p>
 
           <p className="resultMeta">
+            {saveStatus === "guest" &&
+              "Gastmodus: Ergebnis wurde nicht gespeichert."}
             {saveStatus === "saving" && "Speichere Ergebnis..."}
             {saveStatus === "saved" && "Ergebnis gespeichert."}
             {saveStatus === "error" && "Speichern fehlgeschlagen."}
           </p>
+
+          {!session && (
+            <div className="authBox" style={{ marginTop: 18 }}>
+              <p className="authInfo">
+                Melde dich an, damit deine nächsten Ergebnisse gespeichert
+                werden.
+              </p>
+              <div className="authActions">
+                <Link href="/login" className="linkButton">
+                  Einloggen
+                </Link>
+                <Link href="/signup" className="linkButton">
+                  Registrieren
+                </Link>
+              </div>
+            </div>
+          )}
 
           <div className="resultActions">
             <button type="button" onClick={() => router.push("/")}>
