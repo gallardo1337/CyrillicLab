@@ -1,18 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { supabase } from "../lib/supabase";
+import LogoutButton from "../components/LogoutButton";
 
 export default function Home() {
   const router = useRouter();
 
   const [alphabet, setAlphabet] = useState("ukrainian");
   const [mode, setMode] = useState("casual");
+  const [session, setSession] = useState(null);
+  const [loadingSession, setLoadingSession] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      setSession(data.session || null);
+      setLoadingSession(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession || null);
+      setLoadingSession(false);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const startGame = () => {
+    if (!session) {
+      router.push("/login");
+      return;
+    }
+
     router.push(`/game?alphabet=${alphabet}&mode=${mode}`);
   };
+
+  const userEmail = session?.user?.email || "";
 
   return (
     <main className="container">
@@ -21,6 +54,33 @@ export default function Home() {
         <p className="subtitle">
           Trainiere kyrillische Buchstaben – Casual & Hardcore
         </p>
+
+        {!loadingSession && session ? (
+          <div className="authBox">
+            <p className="authInfo">
+              Eingeloggt als <strong>{userEmail}</strong>
+            </p>
+            <LogoutButton />
+          </div>
+        ) : null}
+
+        {!loadingSession && !session ? (
+          <div className="authBox">
+            <p className="authInfo">
+              Bitte logge dich ein oder registriere dich, damit deine Ergebnisse
+              gespeichert werden.
+            </p>
+
+            <div className="authActions">
+              <Link href="/login" className="linkButton">
+                Einloggen
+              </Link>
+              <Link href="/signup" className="linkButton">
+                Registrieren
+              </Link>
+            </div>
+          </div>
+        ) : null}
 
         <div className="section">
           <h2>Alphabet wählen</h2>
@@ -70,7 +130,7 @@ export default function Home() {
 
         <div className="bottomLinks homeLinks">
           <Link href="/stats" className="textLink">
-            Statistik ansehen
+            Meine Statistik
           </Link>
         </div>
       </div>
