@@ -453,5 +453,32 @@ button:disabled {
   .authActions .linkButton {
     min-height: 52px;
     font-size: 15px;
+.hardcoreFeedback {
+  margin-top: 14px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.hardcoreFeedback p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.hardcoreFeedback p + p {
+  margin-top: 8px;
+}
+
+.feedbackCorrect {
+  background: rgba(37, 211, 102, 0.14);
+  border-color: rgba(37, 211, 102, 0.35);
+}
+
+.feedbackWrong {
+  background: rgba(255, 59, 48, 0.14);
+  border-color: rgba(255, 59, 48, 0.35);
+}
   }
 }
