@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
+import { formatDurationMs } from "../../lib/gameUtils";
 
 function formatDate(value) {
   try {
@@ -46,7 +47,9 @@ export default function StatsPage() {
 
       const { data, error } = await supabase
         .from("game_results")
-        .select("id, alphabet, mode, score, total_questions, accuracy, created_at")
+        .select(
+          "id, alphabet, mode, score, total_questions, accuracy, duration_ms, ended_by, is_infinity, created_at"
+        )
         .eq("user_id", session.user.id)
         .order("created_at", { ascending: false })
         .limit(200);
@@ -94,6 +97,7 @@ export default function StatsPage() {
 
     const casualGames = results.filter((item) => item.mode === "casual").length;
     const hardcoreGames = results.filter((item) => item.mode === "hardcore").length;
+    const infinityGames = results.filter((item) => item.mode === "infinity").length;
     const ukrainianGames = results.filter(
       (item) => item.alphabet === "ukrainian"
     ).length;
@@ -109,6 +113,10 @@ export default function StatsPage() {
       .filter((item) => item.mode === "hardcore")
       .reduce((max, item) => Math.max(max, item.score || 0), 0);
 
+    const bestInfinity = results
+      .filter((item) => item.mode === "infinity")
+      .reduce((max, item) => Math.max(max, item.score || 0), 0);
+
     return {
       totalGames,
       totalCorrect,
@@ -118,10 +126,12 @@ export default function StatsPage() {
       accuracy,
       casualGames,
       hardcoreGames,
+      infinityGames,
       ukrainianGames,
       russianGames,
       bestCasual,
       bestHardcore,
+      bestInfinity,
     };
   }, [results]);
 
@@ -161,7 +171,7 @@ export default function StatsPage() {
 
               <div className="statBox">
                 <span className="statLabel">Bester Score</span>
-                <strong className="statValue">{stats.bestScore}/10</strong>
+                <strong className="statValue">{stats.bestScore}</strong>
               </div>
 
               <div className="statBox">
@@ -180,6 +190,11 @@ export default function StatsPage() {
               </div>
 
               <div className="statBox">
+                <span className="statLabel">Infinity Spiele</span>
+                <strong className="statValue">{stats.infinityGames}</strong>
+              </div>
+
+              <div className="statBox">
                 <span className="statLabel">Ukrainisch</span>
                 <strong className="statValue">{stats.ukrainianGames}</strong>
               </div>
@@ -191,22 +206,17 @@ export default function StatsPage() {
 
               <div className="statBox">
                 <span className="statLabel">Bester Casual Score</span>
-                <strong className="statValue">{stats.bestCasual}/10</strong>
+                <strong className="statValue">{stats.bestCasual}</strong>
               </div>
 
               <div className="statBox">
                 <span className="statLabel">Bester Hardcore Score</span>
-                <strong className="statValue">{stats.bestHardcore}/10</strong>
+                <strong className="statValue">{stats.bestHardcore}</strong>
               </div>
 
               <div className="statBox">
-                <span className="statLabel">Richtige Antworten</span>
-                <strong className="statValue">{stats.totalCorrect}</strong>
-              </div>
-
-              <div className="statBox">
-                <span className="statLabel">Fragen gesamt</span>
-                <strong className="statValue">{stats.totalQuestions}</strong>
+                <span className="statLabel">Bester Infinity Run</span>
+                <strong className="statValue">{stats.bestInfinity}</strong>
               </div>
             </div>
 
@@ -226,16 +236,34 @@ export default function StatsPage() {
                         {item.alphabet === "ukrainian"
                           ? "Ukrainisch"
                           : "Russisch"}{" "}
-                        • {item.mode === "hardcore" ? "Hardcore" : "Casual"}
+                        •{" "}
+                        {item.mode === "hardcore"
+                          ? "Hardcore"
+                          : item.mode === "infinity"
+                            ? "Infinity"
+                            : "Casual"}
                       </span>
 
                       <strong className="statValue">
-                        {item.score}/{item.total_questions}
+                        {item.mode === "infinity"
+                          ? `${item.score} Punkte`
+                          : `${item.score}/${item.total_questions}`}
                       </strong>
 
                       <p className="resultMeta" style={{ marginTop: 10 }}>
-                        Accuracy: {Number(item.accuracy || 0).toFixed(2)}%
+                        Zeit: {formatDurationMs(item.duration_ms || 0)}
                       </p>
+
+                      {item.mode === "infinity" && item.ended_by ? (
+                        <p className="resultMeta">
+                          Ende:{" "}
+                          {item.ended_by === "wrong_answer"
+                            ? "durch Fehler"
+                            : item.ended_by === "manual_exit"
+                              ? "manuell beendet"
+                              : "beendet"}
+                        </p>
+                      ) : null}
 
                       <p className="resultMeta">{formatDate(item.created_at)}</p>
                     </div>
@@ -250,11 +278,14 @@ export default function StatsPage() {
           <Link href="/" className="textLink">
             Menü
           </Link>
+          <Link href="/leaderboard" className="textLink">
+            Bestenliste
+          </Link>
           <Link
-            href="/game?alphabet=ukrainian&mode=casual"
+            href="/game?alphabet=ukrainian&mode=infinity"
             className="textLink"
           >
-            Spiel starten
+            Infinity starten
           </Link>
         </div>
       </div>
