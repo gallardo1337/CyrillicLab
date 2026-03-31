@@ -7,7 +7,8 @@ export default function SignupPage() {
       <div className="card">
         <h1 className="title">Registrieren</h1>
         <p className="subtitle">
-          Erstelle ein Konto für persönliche Statistiken in Cyrillic Lab
+          Erstelle ein Konto mit Username für persönliche Statistiken und die
+          spätere Bestenliste
         </p>
 
         <AuthForm mode="signup" />
