@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
 function formatDate(value) {
@@ -16,9 +17,12 @@ function formatDate(value) {
 }
 
 export default function StatsPage() {
+  const router = useRouter();
+
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState("");
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -27,9 +31,23 @@ export default function StatsPage() {
       setLoading(true);
       setErrorText("");
 
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!isMounted) return;
+
+      setSessionChecked(true);
+
+      if (!session?.user?.id) {
+        router.push("/login");
+        return;
+      }
+
       const { data, error } = await supabase
         .from("game_results")
         .select("id, alphabet, mode, score, total_questions, accuracy, created_at")
+        .eq("user_id", session.user.id)
         .order("created_at", { ascending: false })
         .limit(200);
 
@@ -51,7 +69,7 @@ export default function StatsPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [router]);
 
   const stats = useMemo(() => {
     const totalGames = results.length;
@@ -109,19 +127,26 @@ export default function StatsPage() {
 
   const recentResults = useMemo(() => results.slice(0, 10), [results]);
 
+  if (!sessionChecked || loading) {
+    return (
+      <main className="container">
+        <div className="card">
+          <h1 className="title">Statistik</h1>
+          <p className="subtitle">Lade deine persönlichen Daten...</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="container">
       <div className="card">
-        <h1 className="title">Statistik</h1>
-        <p className="subtitle">Echte Daten aus Supabase</p>
+        <h1 className="title">Meine Statistik</h1>
+        <p className="subtitle">Deine persönlichen Daten aus Supabase</p>
 
-        {loading && <p className="resultMeta">Lade Statistik...</p>}
+        {errorText ? <p className="resultMeta">Fehler: {errorText}</p> : null}
 
-        {!loading && errorText && (
-          <p className="resultMeta">Fehler: {errorText}</p>
-        )}
-
-        {!loading && !errorText && (
+        {!errorText && (
           <>
             <div className="statsGrid">
               <div className="statBox">
