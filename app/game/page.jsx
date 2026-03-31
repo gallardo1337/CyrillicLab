@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ukrainianAlphabet, russianAlphabet } from "../../lib/alphabetData";
 
@@ -10,15 +10,16 @@ function normalize(input) {
   return input.trim().toLowerCase();
 }
 
-export default function Game() {
+function GameContent() {
   const params = useSearchParams();
   const router = useRouter();
 
   const alphabetType = params.get("alphabet") || "ukrainian";
   const mode = params.get("mode") || "casual";
 
-  const alphabet =
-    alphabetType === "russian" ? russianAlphabet : ukrainianAlphabet;
+  const alphabet = useMemo(() => {
+    return alphabetType === "russian" ? russianAlphabet : ukrainianAlphabet;
+  }, [alphabetType]);
 
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -26,55 +27,54 @@ export default function Game() {
   const [selected, setSelected] = useState(null);
   const [input, setInput] = useState("");
   const [showResult, setShowResult] = useState(false);
+  const [options, setOptions] = useState([]);
 
-  // Fragen generieren
   useEffect(() => {
     const shuffled = [...alphabet].sort(() => Math.random() - 0.5);
-    setQuestions(shuffled.slice(0, TOTAL_QUESTIONS));
-  }, [alphabetType]);
+    const picked = shuffled.slice(0, TOTAL_QUESTIONS);
 
-  if (questions.length === 0) return null;
+    setQuestions(picked);
+    setCurrentIndex(0);
+    setScore(0);
+    setSelected(null);
+    setInput("");
+    setShowResult(false);
+  }, [alphabet]);
 
-  const current = questions[currentIndex];
+  useEffect(() => {
+    if (
+      mode !== "casual" ||
+      questions.length === 0 ||
+      currentIndex >= questions.length
+    ) {
+      setOptions([]);
+      return;
+    }
 
-  // Casual Antworten erzeugen
-  const getOptions = () => {
+    const current = questions[currentIndex];
     const correct = current.answers[0];
 
     const wrong = alphabet
-      .filter((l) => l.answers[0] !== correct)
+      .filter((letter) => letter.answers[0] !== correct)
       .sort(() => Math.random() - 0.5)
       .slice(0, 2)
-      .map((l) => l.answers[0]);
+      .map((letter) => letter.answers[0]);
 
-    return [...wrong, correct].sort(() => Math.random() - 0.5);
-  };
+    const mixedOptions = [...wrong, correct].sort(() => Math.random() - 0.5);
+    setOptions(mixedOptions);
+  }, [mode, questions, currentIndex, alphabet]);
 
-  const options = mode === "casual" ? getOptions() : [];
+  if (questions.length === 0) {
+    return (
+      <main className="container">
+        <div className="card">
+          <h1>Lade Spiel...</h1>
+        </div>
+      </main>
+    );
+  }
 
-  const handleAnswer = (answer) => {
-    if (selected) return;
-
-    const correctAnswers = current.answers.map((a) => normalize(a));
-    const isCorrect = correctAnswers.includes(normalize(answer));
-
-    if (isCorrect) setScore((s) => s + 1);
-
-    setSelected(answer);
-
-    setTimeout(() => nextQuestion(), 800);
-  };
-
-  const handleSubmit = () => {
-    const correctAnswers = current.answers.map((a) => normalize(a));
-    const isCorrect = correctAnswers.includes(normalize(input));
-
-    if (isCorrect) setScore((s) => s + 1);
-
-    setSelected(input);
-
-    setTimeout(() => nextQuestion(), 800);
-  };
+  const current = questions[currentIndex];
 
   const nextQuestion = () => {
     setSelected(null);
@@ -83,8 +83,45 @@ export default function Game() {
     if (currentIndex + 1 >= TOTAL_QUESTIONS) {
       setShowResult(true);
     } else {
-      setCurrentIndex((i) => i + 1);
+      setCurrentIndex((prev) => prev + 1);
     }
+  };
+
+  const handleAnswer = (answer) => {
+    if (selected !== null) return;
+
+    const correctAnswers = current.answers.map((a) => normalize(a));
+    const isCorrect = correctAnswers.includes(normalize(answer));
+
+    if (isCorrect) {
+      setScore((prev) => prev + 1);
+    }
+
+    setSelected(answer);
+
+    setTimeout(() => {
+      nextQuestion();
+    }, 800);
+  };
+
+  const handleSubmit = () => {
+    if (selected !== null) return;
+
+    const cleanedInput = normalize(input);
+    if (!cleanedInput) return;
+
+    const correctAnswers = current.answers.map((a) => normalize(a));
+    const isCorrect = correctAnswers.includes(cleanedInput);
+
+    if (isCorrect) {
+      setScore((prev) => prev + 1);
+    }
+
+    setSelected(input);
+
+    setTimeout(() => {
+      nextQuestion();
+    }, 800);
   };
 
   if (showResult) {
@@ -96,15 +133,11 @@ export default function Game() {
             {score} / {TOTAL_QUESTIONS}
           </p>
 
-          <button onClick={() => router.push("/")}>
-            Zurück zum Menü
-          </button>
+          <button onClick={() => router.push("/")}>Zurück zum Menü</button>
 
           <button
             onClick={() =>
-              router.push(
-                `/game?alphabet=${alphabetType}&mode=${mode}`
-              )
+              router.push(`/game?alphabet=${alphabetType}&mode=${mode}`)
             }
           >
             Nochmal spielen
@@ -126,7 +159,6 @@ export default function Game() {
 
         <div className="char">{current.char}</div>
 
-        {/* CASUAL */}
         {mode === "casual" && (
           <div className="options">
             {options.map((opt, i) => {
@@ -135,14 +167,14 @@ export default function Game() {
               const isSelected = selected === opt;
 
               let className = "";
-              if (selected) {
+              if (selected !== null) {
                 if (isCorrect) className = "correct";
                 else if (isSelected) className = "wrong";
               }
 
               return (
                 <button
-                  key={i}
+                  key={`${opt}-${i}`}
                   className={className}
                   onClick={() => handleAnswer(opt)}
                 >
@@ -153,7 +185,6 @@ export default function Game() {
           </div>
         )}
 
-        {/* HARDCORE */}
         {mode === "hardcore" && (
           <div className="inputArea">
             <input
@@ -164,11 +195,26 @@ export default function Game() {
                 if (e.key === "Enter") handleSubmit();
               }}
             />
-
             <button onClick={handleSubmit}>Prüfen</button>
           </div>
         )}
       </div>
     </main>
+  );
+}
+
+export default function GamePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="container">
+          <div className="card">
+            <h1>Lade Spiel...</h1>
+          </div>
+        </main>
+      }
+    >
+      <GameContent />
+    </Suspense>
   );
 }
