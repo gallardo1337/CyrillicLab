@@ -13,20 +13,65 @@ export default function Home() {
   const [mode, setMode] = useState("casual");
   const [session, setSession] = useState(null);
   const [loadingSession, setLoadingSession] = useState(true);
+  const [profileName, setProfileName] = useState("");
 
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    async function loadSessionAndProfile() {
+      const { data } = await supabase.auth.getSession();
       if (!mounted) return;
-      setSession(data.session || null);
+
+      const currentSession = data.session || null;
+      setSession(currentSession);
+
+      if (currentSession?.user?.id) {
+        const metadataName = currentSession.user.user_metadata?.username || "";
+
+        if (metadataName) {
+          setProfileName(metadataName);
+        } else {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("username")
+            .eq("id", currentSession.user.id)
+            .single();
+
+          if (!mounted) return;
+          setProfileName(profile?.username || "");
+        }
+      } else {
+        setProfileName("");
+      }
+
       setLoadingSession(false);
-    });
+    }
+
+    loadSessionAndProfile();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       setSession(newSession || null);
+
+      if (newSession?.user?.id) {
+        const metadataName = newSession.user.user_metadata?.username || "";
+
+        if (metadataName) {
+          setProfileName(metadataName);
+        } else {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("username")
+            .eq("id", newSession.user.id)
+            .single();
+
+          setProfileName(profile?.username || "");
+        }
+      } else {
+        setProfileName("");
+      }
+
       setLoadingSession(false);
     });
 
@@ -47,13 +92,14 @@ export default function Home() {
       <div className="card">
         <h1 className="title">Cyrillic Lab</h1>
         <p className="subtitle">
-          Trainiere kyrillische Buchstaben – Casual & Hardcore
+          Trainiere kyrillische Buchstaben – Casual, Hardcore & bald Infinity
         </p>
 
         {!loadingSession && session ? (
           <div className="authBox">
             <p className="authInfo">
-              Eingeloggt als <strong>{userEmail}</strong>
+              Eingeloggt als{" "}
+              <strong>{profileName || userEmail || "User"}</strong>
             </p>
             <LogoutButton />
           </div>
@@ -63,7 +109,8 @@ export default function Home() {
           <div className="authBox">
             <p className="authInfo">
               Du kannst auch ohne Login spielen. Mit Konto werden deine
-              Ergebnisse und persönlichen Statistiken gespeichert.
+              Ergebnisse, persönliche Statistiken und später auch dein Platz in
+              der Bestenliste gespeichert.
             </p>
 
             <div className="authActions">
